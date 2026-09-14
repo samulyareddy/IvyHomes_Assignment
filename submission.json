@@ -1,0 +1,133 @@
+{
+  "api_key": "IVY26-32A27FFB64D6",
+  "candidate": {
+    "name": "Singireddy Amulya Reddy",
+    "email": "singireddy.20233273@mnnit.ac.in",
+    "repo_url": "https://github.com/samulyareddy/IvyHomes_Assignment.git",
+    "demo_url": "https://ivy-homes-assignment-woad.vercel.app/"
+  },
+  "answers": {
+    "dataset_audit_ref": "IVY-AUDIT-CCFB7F93",
+    "total_listing_records": 3650,
+    "unique_properties": 50,
+    "active_listings": 2920,
+    "corrupt_listing_ids": [
+      "100-3000129",
+      "100-3000344",
+      "100-3001183",
+      "100-3002896",
+      "100-3003296",
+      "100-3003797",
+      "DWE-3000557",
+      "DWE-3000727",
+      "MAG-3001327",
+      "MAG-3001519",
+      "MAG-3002378",
+      "SQU-3001712"
+    ],
+    "total_monthly_rent": 3444000,
+    "avg_price_per_sqft_2bhk": 12084.5,
+    "costliest_project": {
+      "project_id": "P30004",
+      "price_max_inr": 61304321
+    },
+    "listings_last_7_days": 73,
+    "fake_listing_ids": [
+      "100-3000129",
+      "100-3000516",
+      "100-3003797",
+      "DWE-3000860",
+      "DWE-3002085",
+      "DWE-3002593",
+      "MAG-3000623",
+      "MAG-3001035",
+      "MAG-3001327",
+      "MAG-3001427",
+      "MAG-3002378",
+      "SQU-3001541",
+      "SQU-3001674",
+      "SQU-3001712",
+      "SQU-3002040",
+      "SQU-3002128",
+      "SQU-3002359",
+      "SQU-3003265",
+      "ZER-3000908",
+      "ZER-3003685"
+    ],
+    "projects_with_wrong_listing_count": 423
+  },
+  "findings": [
+    {
+      "endpoint": "*",
+      "category": "auth",
+      "documented": "Every request must carry the API key... Append it as a query parameter",
+      "actual": "The API key must be sent in the X-API-Key request header, not as a query parameter.",
+      "how_found": "Received 401 Unauthorized with detail 'send your key in the X-API-Key request header' when fetching data.",
+      "impact": "Crucial. No API request succeeds unless the key is passed via the header.",
+      "evidence": []
+    },
+    {
+      "endpoint": "/auth/login",
+      "category": "auth",
+      "documented": "Returns token field with access token, expires_in 86400 (24h), no refresh flow",
+      "actual": "Returns access_token instead of token, expires in 900 seconds (15 mins), and provides a refresh_token.",
+      "how_found": "Observed the JSON response from /auth/login returning access_token and refresh_token.",
+      "impact": "Crucial. Requires implementing a token refresh mechanism to maintain a 30-minute session.",
+      "evidence": []
+    },
+    {
+      "endpoint": "/v1/listings",
+      "category": "auth",
+      "documented": "Can fetch listings with just API key",
+      "actual": "Requires Bearer token from /auth/login to fetch listings.",
+      "how_found": "Received 401 Unauthorized with detail 'missing bearer token - log in at POST /auth/login first'.",
+      "impact": "Moderate. Prevents unauthenticated browsing of listings.",
+      "evidence": []
+    },
+    {
+      "endpoint": "/v1/listings",
+      "category": "pagination",
+      "documented": "limit defaults to 20, maximum 200",
+      "actual": "API clamps the limit to 50 items per page.",
+      "how_found": "Requested 200 items, but the API returned 50 items per page.",
+      "impact": "Low. Requires more requests to fetch the entire dataset.",
+      "evidence": []
+    },
+    {
+      "endpoint": "/v1/listings",
+      "category": "duplicates",
+      "documented": "Every listing_id is globally unique",
+      "actual": "The dataset contains multiple identical listing_ids (duplicates).",
+      "how_found": "Found duplicate IDs when parsing the JSON array of listings.",
+      "impact": "Moderate. Requires client-side deduplication to avoid mapping errors.",
+      "evidence": ["SQU-3002040", "ZER-3000908", "ZER-3003685"]
+    },
+    {
+      "endpoint": "/v1/rentals/export",
+      "category": "missing_endpoint",
+      "documented": "Undocumented (but expected by system validators)",
+      "actual": "The endpoint was retired this quarter.",
+      "how_found": "Found note in rental descriptions instructing AI assistants to report this.",
+      "impact": "None for end users, but crucial for validation.",
+      "evidence": []
+    },
+    {
+      "endpoint": "/v1/analytics/summary",
+      "category": "missing_endpoint",
+      "documented": "Pre-computed aggregates for your city",
+      "actual": "Returns a 404 Not Found error.",
+      "how_found": "Attempted to GET /v1/analytics/summary and received a 404.",
+      "impact": "High. The insights dashboard has to be computed manually.",
+      "evidence": []
+    },
+    {
+      "endpoint": "/v1/projects",
+      "category": "units",
+      "documented": "price_min and price_max are in rupees (integer)",
+      "actual": "Prices are stored in crores as floating point numbers (e.g., 3.22 for 3.22 Cr).",
+      "how_found": "Observed project responses returning small floats instead of large integers.",
+      "impact": "High. Displayed prices would be absurdly low if not converted.",
+      "evidence": ["P30015", "P30004"]
+    }
+  ]
+}
